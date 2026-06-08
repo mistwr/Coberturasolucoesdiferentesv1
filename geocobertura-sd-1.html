@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoCobertura — Soluções Diferentes</title>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;800;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:#0d1b2e; --blue:#1a3a5c;
+    --accent:#00c8ff; --accent2:#4af0a0;
+    --orange:#ff7c2a;
+    --card:rgba(255,255,255,0.04);
+    --border:rgba(0,200,255,0.18);
+    --text:#e8f4ff; --muted:#7a9bbb;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--navy);color:var(--text);font-family:'Exo 2',sans-serif;min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;
+    background-image:linear-gradient(rgba(0,200,255,0.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,200,255,0.04) 1px,transparent 1px);
+    background-size:40px 40px;pointer-events:none;z-index:0;}
+  body::after{content:'';position:fixed;top:-200px;right:-200px;width:600px;height:600px;
+    background:radial-gradient(circle,rgba(0,200,255,0.07) 0%,transparent 70%);
+    pointer-events:none;z-index:0;}
+
+  /* HEADER */
+  header{position:relative;z-index:10;display:flex;align-items:center;gap:14px;
+    padding:14px 18px;
+    background:linear-gradient(135deg,rgba(13,27,46,0.98),rgba(26,58,92,0.9));
+    border-bottom:1px solid var(--border);backdrop-filter:blur(12px);}
+  .logo-wrap{width:54px;height:54px;border-radius:50%;overflow:hidden;
+    border:2px solid var(--accent);box-shadow:0 0 16px rgba(0,200,255,0.4);
+    flex-shrink:0;background:#1a2a3e;display:flex;align-items:center;justify-content:center;}
+  .logo-wrap img{width:100%;height:100%;object-fit:cover;}
+  .header-titles{flex:1;}
+  .header-titles h1{font-size:clamp(0.95rem,3vw,1.4rem);font-weight:900;
+    background:linear-gradient(90deg,#00c8ff,#4af0a0);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.1;}
+  .header-titles p{font-size:0.68rem;color:var(--muted);font-family:'Rajdhani',sans-serif;
+    letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;}
+  .badge-anacom{font-family:'Rajdhani',sans-serif;font-size:0.63rem;font-weight:700;
+    letter-spacing:1px;padding:4px 10px;border:1px solid var(--accent);
+    border-radius:20px;color:var(--accent);white-space:nowrap;text-transform:uppercase;}
+
+  /* MAIN */
+  main{position:relative;z-index:5;max-width:880px;margin:0 auto;padding:22px 14px 60px;}
+
+  .hero{text-align:center;margin-bottom:18px;}
+  .hero h2{font-size:clamp(1.15rem,4vw,1.85rem);font-weight:800;}
+  .hero h2 span{color:var(--accent);}
+  .hero p{color:var(--muted);font-size:0.8rem;margin-top:5px;font-family:'Rajdhani',sans-serif;}
+
+  /* SEARCH */
+  .search-card{background:var(--card);border:1px solid var(--border);
+    border-radius:15px;padding:20px;backdrop-filter:blur(10px);margin-bottom:22px;}
+  .search-tabs{display:flex;gap:7px;margin-bottom:14px;}
+  .tab-btn{flex:1;padding:8px;border-radius:7px;border:1px solid var(--border);
+    background:transparent;color:var(--muted);font-family:'Rajdhani',sans-serif;
+    font-size:0.8rem;font-weight:700;letter-spacing:0.4px;cursor:pointer;
+    transition:all .2s;text-transform:uppercase;}
+  .tab-btn.active{background:rgba(0,200,255,0.12);border-color:var(--accent);color:var(--accent);}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .search-row{display:flex;gap:9px;flex-wrap:wrap;}
+  .search-row input,.search-row select{
+    flex:1;min-width:130px;background:rgba(255,255,255,0.05);
+    border:1px solid var(--border);border-radius:9px;padding:11px 13px;
+    color:var(--text);font-family:'Exo 2',sans-serif;font-size:0.87rem;
+    outline:none;transition:border-color .2s,box-shadow .2s;}
+  .search-row input:focus,.search-row select:focus{
+    border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,200,255,0.1);}
+  .search-row input::placeholder{color:var(--muted);}
+  .search-row select option{background:#1a2a3e;}
+  .btn-search{padding:11px 20px;
+    background:linear-gradient(135deg,#00c8ff,#0077bb);
+    border:none;border-radius:9px;color:#fff;
+    font-family:'Rajdhani',sans-serif;font-size:0.93rem;font-weight:700;
+    letter-spacing:0.8px;cursor:pointer;transition:transform .15s,box-shadow .15s;
+    white-space:nowrap;text-transform:uppercase;}
+  .btn-search:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,200,255,0.35);}
+  .btn-search:active{transform:translateY(0);}
+  .btn-search:disabled{opacity:0.55;cursor:not-allowed;transform:none;}
+
+  /* Suggestions */
+  .sugg-wrap{flex:1;min-width:190px;position:relative;}
+  .suggestions-list{position:absolute;top:calc(100% + 4px);left:0;right:0;
+    background:#1a2a3e;border:1px solid var(--border);border-radius:8px;
+    z-index:50;max-height:190px;overflow-y:auto;display:none;}
+  .suggestions-list.open{display:block;}
+  .sugg-item{padding:9px 13px;cursor:pointer;font-size:0.81rem;
+    border-bottom:1px solid rgba(255,255,255,0.04);transition:background .15s;}
+  .sugg-item:hover{background:rgba(0,200,255,0.1);}
+  .sugg-item small{color:var(--muted);font-size:0.7rem;display:block;margin-top:1px;}
+
+  /* LOADING */
+  .loading{display:none;text-align:center;padding:36px;}
+  .loading.active{display:block;}
+  .spinner{width:42px;height:42px;border:3px solid rgba(0,200,255,0.15);
+    border-top-color:var(--accent);border-radius:50%;
+    animation:spin .8s linear infinite;margin:0 auto 12px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .loading p{color:var(--muted);font-size:0.83rem;font-family:'Rajdhani',sans-serif;}
+  .load-step{color:var(--accent)!important;font-weight:700!important;margin-top:4px;}
+
+  /* ERROR */
+  .error-box{display:none;background:rgba(255,80,80,0.08);border:1px solid rgba(255,80,80,0.3);
+    border-radius:12px;padding:18px;text-align:center;margin-bottom:16px;}
+  .error-box.active{display:block;}
+  .error-box h4{color:#ff5050;margin-bottom:6px;}
+  .error-box p{color:var(--muted);font-size:0.8rem;font-family:'Rajdhani',sans-serif;}
+
+  /* RESULTS */
+  .results{display:none;}
+  .results.active{display:block;}
+
+  .result-header{display:flex;align-items:flex-start;justify-content:space-between;
+    gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+  .result-address h3{font-size:1rem;font-weight:700;color:var(--accent2);}
+  .result-address p{font-size:0.76rem;color:var(--muted);margin-top:2px;font-family:'Rajdhani',sans-serif;}
+  .btn-reset{padding:6px 13px;background:transparent;border:1px solid rgba(255,255,255,0.18);
+    border-radius:7px;color:var(--muted);font-family:'Rajdhani',sans-serif;
+    font-size:0.76rem;font-weight:600;cursor:pointer;transition:all .2s;text-transform:uppercase;}
+  .btn-reset:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* Source badge */
+  .src-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;
+    border-radius:20px;margin-bottom:14px;font-family:'Rajdhani',sans-serif;
+    font-size:0.7rem;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;}
+  .src-badge.real{background:rgba(74,240,160,0.08);border:1px solid rgba(74,240,160,0.3);color:var(--accent2);}
+  .src-badge.sim{background:rgba(255,200,0,0.08);border:1px solid rgba(255,200,0,0.3);color:#ffc800;}
+  .src-dot{width:7px;height:7px;border-radius:50%;background:currentColor;
+    box-shadow:0 0 5px currentColor;}
+
+  /* Summary */
+  .coverage-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+  .sum-pill{display:flex;align-items:center;gap:6px;padding:5px 11px;border-radius:30px;
+    font-size:0.76rem;font-family:'Rajdhani',sans-serif;font-weight:700;
+    letter-spacing:0.4px;text-transform:uppercase;}
+  .sum-pill.ok{background:rgba(74,240,160,0.12);border:1px solid rgba(74,240,160,0.35);color:#4af0a0;}
+  .sum-pill.no{background:rgba(255,80,80,0.1);border:1px solid rgba(255,80,80,0.3);color:#ff5050;}
+  .pdot{width:7px;height:7px;border-radius:50%;}
+  .ok .pdot{background:#4af0a0;box-shadow:0 0 5px #4af0a0;}
+  .no .pdot{background:#ff5050;box-shadow:0 0 5px #ff5050;}
+
+  /* Map */
+  .map-sec{background:var(--card);border:1px solid var(--border);
+    border-radius:13px;overflow:hidden;margin-bottom:17px;}
+  .map-hdr{padding:11px 15px;border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:8px;}
+  .map-hdr h4{font-size:0.8rem;font-family:'Rajdhani',sans-serif;font-weight:700;
+    text-transform:uppercase;letter-spacing:1px;color:var(--muted);}
+  #map-frame{width:100%;height:300px;border:none;display:block;background:#0a1625;}
+
+  /* Operator grid */
+  .ops-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+    gap:12px;margin-bottom:22px;}
+  .op-card{background:var(--card);border:1px solid var(--border);
+    border-radius:12px;padding:16px;transition:border-color .2s,transform .2s;
+    position:relative;overflow:hidden;}
+  .op-card::before{content:'';position:absolute;top:0;left:0;right:0;
+    height:3px;border-radius:12px 12px 0 0;}
+  .op-nos::before{background:linear-gradient(90deg,#e30613,#ff5f00);}
+  .op-meo::before{background:linear-gradient(90deg,#0080c8,#00b4e6);}
+  .op-vodafone::before{background:linear-gradient(90deg,#e60000,#ff4444);}
+  .op-nowo::before{background:linear-gradient(90deg,#8b00ff,#cc44ff);}
+  .op-digi::before{background:linear-gradient(90deg,#ff8c00,#ffcc00);}
+  .op-card:hover{border-color:rgba(0,200,255,0.32);transform:translateY(-2px);}
+
+  .op-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
+  .op-name{font-size:0.96rem;font-weight:800;letter-spacing:0.5px;}
+  .op-nos .op-name{color:#ff5f00;}
+  .op-meo .op-name{color:#00b4e6;}
+  .op-vodafone .op-name{color:#ff4444;}
+  .op-nowo .op-name{color:#cc44ff;}
+  .op-digi .op-name{color:#ffcc00;}
+
+  .op-badge{font-family:'Rajdhani',sans-serif;font-size:0.67rem;font-weight:700;
+    padding:3px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:0.4px;}
+  .b-ok{background:rgba(74,240,160,0.15);color:#4af0a0;border:1px solid rgba(74,240,160,0.4);}
+  .b-no{background:rgba(255,80,80,0.12);color:#ff5050;border:1px solid rgba(255,80,80,0.35);}
+
+  .op-techs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px;}
+  .ttag{font-family:'Rajdhani',sans-serif;font-size:0.68rem;font-weight:600;
+    padding:2px 8px;border-radius:5px;background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.1);color:var(--text);letter-spacing:0.4px;}
+  .ttag.fiber{border-color:rgba(74,240,160,0.4);color:#4af0a0;}
+  .ttag.cable{border-color:rgba(0,200,255,0.4);color:var(--accent);}
+  .ttag.xdsl{border-color:rgba(255,200,0,0.4);color:#ffc800;}
+  .ttag.fwa{border-color:rgba(255,124,42,0.4);color:var(--orange);}
+  .ttag.mobile{border-color:rgba(180,130,255,0.4);color:#b482ff;}
+
+  .op-dl{font-size:0.74rem;color:var(--muted);font-family:'Rajdhani',sans-serif;margin-bottom:7px;}
+  .op-dl span{color:var(--accent2);font-weight:700;}
+  .op-link{display:inline-block;font-size:0.71rem;font-family:'Rajdhani',sans-serif;
+    font-weight:700;color:var(--accent);text-decoration:none;letter-spacing:0.4px;
+    text-transform:uppercase;border-bottom:1px solid rgba(0,200,255,0.3);
+    padding-bottom:1px;transition:border-color .15s;}
+  .op-link:hover{border-color:var(--accent);}
+  .op-nocov{font-size:0.74rem;color:#ff5050;margin-top:4px;font-family:'Rajdhani',sans-serif;}
+
+  /* ANACOM panel */
+  .anacom-panel{background:rgba(0,200,255,0.04);border:1px solid rgba(0,200,255,0.16);
+    border-radius:12px;padding:13px 15px;margin-bottom:15px;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .ap-txt{flex:1;min-width:180px;}
+  .ap-txt strong{font-size:0.87rem;}
+  .ap-txt p{font-size:0.78rem;color:var(--muted);font-family:'Rajdhani',sans-serif;margin-top:2px;}
+  .btn-anacom{padding:8px 16px;
+    background:rgba(0,200,255,0.12);border:1px solid var(--accent);
+    border-radius:8px;color:var(--accent);font-family:'Rajdhani',sans-serif;
+    font-size:0.82rem;font-weight:700;text-decoration:none;letter-spacing:0.4px;
+    text-transform:uppercase;transition:background .2s;white-space:nowrap;}
+  .btn-anacom:hover{background:rgba(0,200,255,0.22);}
+
+  /* Info */
+  .info-bar{display:flex;align-items:flex-start;gap:9px;padding:11px 13px;
+    background:rgba(0,200,255,0.04);border:1px solid rgba(0,200,255,0.1);
+    border-radius:9px;font-size:0.75rem;color:var(--muted);
+    font-family:'Rajdhani',sans-serif;letter-spacing:0.3px;line-height:1.5;}
+  .info-bar svg{flex-shrink:0;margin-top:2px;}
+
+  footer{position:relative;z-index:5;text-align:center;padding:16px;
+    border-top:1px solid var(--border);font-family:'Rajdhani',sans-serif;
+    font-size:0.7rem;color:var(--muted);letter-spacing:0.5px;}
+  footer strong{color:var(--accent);}
+
+  @media(max-width:500px){
+    .search-row{flex-direction:column;}
+    .btn-search{width:100%;}
+    .badge-anacom{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <img src="35309.jpg" alt="SD"
+      onerror="this.parentElement.innerHTML='<span style=font-size:1.5rem>📡</span>'">
+  </div>
+  <div class="header-titles">
+    <h1>GeoCobertura Portugal</h1>
+    <p>Soluções Diferentes · Telecomunicações &amp; Energia</p>
+  </div>
+  <div class="badge-anacom">✓ GEO.ANACOM</div>
+</header>
+
+<main>
+  <div class="hero">
+    <h2>Verifica a <span>cobertura real</span> na tua morada</h2>
+    <p>Dados oficiais GEO.ANACOM · MEO · NOS · Vodafone · DIGI · Atualização Q4 2025</p>
+  </div>
+
+  <div class="search-card">
+    <div class="search-tabs">
+      <button class="tab-btn active" onclick="setTab('cp',this)">📮 Código Postal</button>
+      <button class="tab-btn" onclick="setTab('rua',this)">🏘️ Rua / Morada</button>
+      <button class="tab-btn" onclick="setTab('local',this)">📍 Localidade</button>
+    </div>
+
+    <!-- CP Tab -->
+    <div id="tab-cp" class="tab-panel active">
+      <div class="search-row">
+        <input type="text" id="input-cp"
+          placeholder="Ex: 4000-001 · 1250-096 · 2750-357"
+          maxlength="8" oninput="formatCP(this)"
+          onkeydown="if(event.key==='Enter')doSearch()">
+        <button class="btn-search" onclick="doSearch()">🔍 Verificar</button>
+      </div>
+      <div id="cp-detail" style="margin-top:10px;font-size:0.78rem;color:var(--muted);font-family:'Rajdhani',sans-serif;min-height:18px;"></div>
+    </div>
+
+    <!-- Rua Tab -->
+    <div id="tab-rua" class="tab-panel">
+      <div class="search-row">
+        <div class="sugg-wrap">
+          <input type="text" id="input-rua"
+            placeholder="Ex: Rua de Santa Catarina, Porto"
+            oninput="fetchSugg(this.value)"
+            onkeydown="if(event.key==='Enter')doSearch()">
+          <div class="suggestions-list" id="sugg-list"></div>
+        </div>
+        <input type="text" id="input-num" placeholder="Nº" style="max-width:74px">
+        <button class="btn-search" onclick="doSearch()">🔍 Verificar</button>
+      </div>
+    </div>
+
+    <!-- Local Tab -->
+    <div id="tab-local" class="tab-panel">
+      <div class="search-row">
+        <input type="text" id="input-local"
+          placeholder="Ex: Braga · Vila Nova de Gaia · Faro"
+          onkeydown="if(event.key==='Enter')doSearch()">
+        <select id="sel-dist">
+          <option value="">Todos os distritos</option>
+          <option>Aveiro</option><option>Beja</option><option>Braga</option>
+          <option>Bragança</option><option>Castelo Branco</option><option>Coimbra</option>
+          <option>Évora</option><option>Faro</option><option>Guarda</option>
+          <option>Leiria</option><option>Lisboa</option><option>Portalegre</option>
+          <option>Porto</option><option>Santarém</option><option>Setúbal</option>
+          <option>Viana do Castelo</option><option>Vila Real</option><option>Viseu</option>
+        </select>
+        <button class="btn-search" onclick="doSearch()">🔍 Verificar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>A consultar dados...</p>
+    <p class="load-step" id="load-step">Aguarda...</p>
+  </div>
+
+  <div class="error-box" id="err-box">
+    <h4>⚠️ Não foi possível obter dados</h4>
+    <p id="err-msg">Tenta novamente.</p>
+  </div>
+
+  <div class="results" id="results">
+    <div class="result-header">
+      <div class="result-address">
+        <h3 id="res-addr">—</h3>
+        <p id="res-meta">—</p>
+      </div>
+      <button class="btn-reset" onclick="resetSearch()">← Nova pesquisa</button>
+    </div>
+
+    <div id="src-wrap"></div>
+    <div class="coverage-summary" id="cov-sum"></div>
+
+    <div class="map-sec">
+      <div class="map-hdr">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#00c8ff" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+        <h4>Localização no mapa</h4>
+      </div>
+      <iframe id="map-frame" title="Mapa"></iframe>
+    </div>
+
+    <div class="ops-grid" id="ops-grid"></div>
+
+    <div class="anacom-panel">
+      <div class="ap-txt">
+        <strong>🗺️ Confirmar no GEO.ANACOM oficial</strong>
+        <p>Plataforma regulatória ANACOM com dados dos 4 operadores · Q4 2025</p>
+      </div>
+      <a href="https://geo.anacom.pt/publico/home" target="_blank" class="btn-anacom">
+        Abrir GEO.ANACOM →
+      </a>
+    </div>
+
+    <div class="info-bar">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#00c8ff" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      Dados via API GEO.ANACOM (Decreto-Lei 40/2022) com proxy Vercel para resolver CORS.
+      Geocodificação de CP por geoapi.pt (fonte CTT/INE 2025).
+      Cobertura móvel pode diferir dos sites dos operadores. Para contratar, confirma diretamente com a operadora.
+    </div>
+  </div>
+</main>
+
+<footer>
+  <strong>GeoCobertura</strong> · Soluções Diferentes LDA · Porto ·
+  Fonte: GEO.ANACOM + geoapi.pt · Q4 2025
+</footer>
+
+<script>
+// ══════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════
+
+// Quando fizeres deploy em Vercel, este /api/anacom faz proxy ao ANACOM sem CORS
+// Em desenvolvimento local, cai no fallback de simulação
+const PROXY_URL = '/api/anacom';
+
+// geoapi.pt — API gratuita PT para códigos postais (fonte CTT/INE 2025)
+const GEOAPI_CP  = 'https://json.geoapi.pt/cp/';   // + XXXX-XXX → {lat, lon, ...}
+const GEOAPI_MUN = 'https://json.geoapi.pt/municipio/'; // + nome
+
+const OP_META = {
+  'MEO':      {cls:'op-meo',      url:'https://www.meo.pt/internet/internet-em-casa',  label:'Aderir MEO'},
+  'NOS':      {cls:'op-nos',      url:'https://www.nos.pt/particulares/internet',       label:'Aderir NOS'},
+  'VODAFONE': {cls:'op-vodafone', url:'https://www.vodafone.pt/internet',              label:'Aderir Vodafone'},
+  'DIGI':     {cls:'op-digi',     url:'https://aderirdigi.pt',                          label:'Aderir DIGI'},
+  'NOWO':     {cls:'op-nowo',     url:'https://nowo.pt/internet',                       label:'Aderir NOWO'},
+};
+const OP_ORDER = ['MEO','NOS','VODAFONE','DIGI','NOWO'];
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+let tab = 'cp';
+let cachedGeo = null; // {lat, lon, label, meta}
+
+// ══════════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════════
+function setTab(t, btn) {
+  tab = t;
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  resetSearch(true);
+}
+
+function formatCP(el) {
+  let v = el.value.replace(/\D/g,'');
+  if (v.length > 4) v = v.slice(0,4)+'-'+v.slice(4,7);
+  el.value = v;
+  // Live preview do CP
+  if (v.length === 8) previewCP(v);
+  else document.getElementById('cp-detail').textContent = '';
+}
+
+async function previewCP(cp) {
+  try {
+    const d = await fetch(GEOAPI_CP + cp).then(r=>r.json());
+    if (d && d.Localidade) {
+      document.getElementById('cp-detail').textContent =
+        `📍 ${d.Localidade}${d.Municipio ? ', ' + d.Municipio : ''}${d.Distrito ? ' · ' + d.Distrito : ''}`;
+    }
+  } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════
+// AUTOCOMPLETE (Nominatim — só para aba Rua)
+// ══════════════════════════════════════════════════════
+let suggTimer = null;
+async function fetchSugg(q) {
+  clearTimeout(suggTimer);
+  const list = document.getElementById('sugg-list');
+  if (q.length < 3) { list.classList.remove('open'); return; }
+  suggTimer = setTimeout(async () => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+' Portugal')}&format=json&limit=6&countrycodes=pt&addressdetails=1`;
+      const data = await (await fetch(url, {headers:{'Accept-Language':'pt'}})).json();
+      list.innerHTML = '';
+      if (!data.length) { list.classList.remove('open'); return; }
+      data.forEach(item => {
+        const d = document.createElement('div');
+        d.className = 'sugg-item';
+        const parts = item.display_name.split(',');
+        d.innerHTML = `${parts[0]}<small>${parts.slice(1,4).join(',')}</small>`;
+        d.onclick = () => {
+          document.getElementById('input-rua').value = parts.slice(0,2).join(', ').trim();
+          cachedGeo = {lat: parseFloat(item.lat), lon: parseFloat(item.lon),
+            label: item.display_name.split(',').slice(0,3).join(','),
+            meta: item.address || {}};
+          list.classList.remove('open');
+          doSearch();
+        };
+        list.appendChild(d);
+      });
+      list.classList.add('open');
+    } catch(e) {}
+  }, 350);
+}
+
+// ══════════════════════════════════════════════════════
+// GEOCODING
+// ══════════════════════════════════════════════════════
+
+// 1. Código Postal — geoapi.pt (CTT/INE, preciso para PT)
+async function geocodeCP(cp) {
+  setStep('A validar código postal...');
+  const url = GEOAPI_CP + encodeURIComponent(cp);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('CP não encontrado');
+  const d = await res.json();
+  if (!d || !d.lat || !d.lon) throw new Error('CP sem coordenadas');
+  const label = [d.Arteria||'', d.Localidade||'', cp].filter(Boolean).join(', ');
+  const city = d.Localidade || d.Municipio || '';
+  return {lat: parseFloat(d.lat), lon: parseFloat(d.lon), label, city,
+    cp, municipio: d.Municipio||'', distrito: d.Distrito||''};
+}
+
+// 2. Rua / Morada — Nominatim
+async function geocodeRua(q) {
+  setStep('A localizar morada...');
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+' Portugal')}&format=json&limit=1&countrycodes=pt&addressdetails=1`;
+  const data = await (await fetch(url, {headers:{'Accept-Language':'pt'}})).json();
+  if (!data.length) throw new Error('Morada não encontrada');
+  const item = data[0];
+  const a = item.address || {};
+  const label = [a.road||a.pedestrian||'', a.city||a.town||a.village||'', a.postcode||''].filter(Boolean).join(', ');
+  return {lat: parseFloat(item.lat), lon: parseFloat(item.lon),
+    label: label || item.display_name.split(',').slice(0,3).join(','),
+    city: a.city||a.town||a.village||'',
+    municipio: a.county||'', distrito: a.state||''};
+}
+
+// 3. Localidade — geoapi.pt municipio
+async function geocodeLocal(q, dist) {
+  setStep('A localizar localidade...');
+  const full = [q, dist].filter(Boolean).join(', ');
+  // Try geoapi.pt municipio first
+  try {
+    const slug = encodeURIComponent(q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-'));
+    const url = GEOAPI_MUN + slug + '?json=1';
+    const d = await (await fetch(url)).json();
+    if (d && d.geojson && d.geojson.geometry && d.geojson.geometry.coordinates) {
+      const [lon, lat] = d.geojson.geometry.coordinates;
+      return {lat, lon, label: full, city: q, municipio: q, distrito: dist||''};
+    }
+  } catch(e) {}
+  // Fallback Nominatim
+  return geocodeRua(full);
+}
+
+// ══════════════════════════════════════════════════════
+// MAIN SEARCH
+// ══════════════════════════════════════════════════════
+async function doSearch() {
+  showLoading(true);
+  showError(false);
+  document.getElementById('results').classList.remove('active');
+
+  try {
+    let geo;
+
+    if (tab === 'cp') {
+      const cp = document.getElementById('input-cp').value.trim();
+      if (!cp || cp.length < 7) {
+        showLoading(false);
+        return showError(true, 'Introduz um código postal completo (ex: 4000-001)');
+      }
+      geo = await geocodeCP(cp);
+
+    } else if (tab === 'rua') {
+      if (cachedGeo) {
+        geo = cachedGeo;
+        cachedGeo = null;
+      } else {
+        const rua = document.getElementById('input-rua').value.trim();
+        const num = document.getElementById('input-num').value.trim();
+        if (!rua) { showLoading(false); return showError(true, 'Introduz uma rua ou morada'); }
+        geo = await geocodeRua([rua, num].filter(Boolean).join(' '));
+      }
+
+    } else {
+      const local = document.getElementById('input-local').value.trim();
+      const dist = document.getElementById('sel-dist').value;
+      if (!local) { showLoading(false); return showError(true, 'Introduz uma localidade'); }
+      geo = await geocodeLocal(local, dist);
+    }
+
+    setStep('A consultar GEO.ANACOM...');
+
+    // Query ANACOM via proxy
+    let ops;
+    let isReal = false;
+    try {
+      const proxyRes = await fetch(
+        `${PROXY_URL}?lat=${geo.lat}&lon=${geo.lon}`,
+        {signal: AbortSignal.timeout(14000)}
+      );
+      if (proxyRes.ok) {
+        const data = await proxyRes.json();
+        if (data.results && data.results.length > 0) {
+          ops = parseANACOM(data.results);
+          isReal = true;
+        }
+      }
+    } catch(e) {
+      console.warn('Proxy ANACOM falhou:', e.message);
+    }
+
+    if (!ops) {
+      ops = simulateCoverage(geo.lat, geo.lon);
+    }
+
+    showLoading(false);
+    renderResults(geo, ops, isReal);
+
+  } catch(e) {
+    showLoading(false);
+    showError(true, e.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// PARSE ANACOM RESULTS
+// ══════════════════════════════════════════════════════
+function normalizeOp(raw) {
+  const u = raw.toUpperCase();
+  if (u.includes('MEO') || u.includes('ALTICE')) return 'MEO';
+  if (u.includes('NOS')) return 'NOS';
+  if (u.includes('VODAFONE') || u.includes('VODA')) return 'VODAFONE';
+  if (u.includes('NOWO') || u.includes('CABOVI')) return 'NOWO';
+  if (u.includes('DIGI')) return 'DIGI';
+  return null;
+}
+
+function normalizeTech(tech) {
+  const u = tech.toUpperCase();
+  const out = [];
+  if (u.includes('FTTH') || u.includes('FO') || u.includes('FIBRA') || u.includes('FIBER')) out.push('FTTH');
+  if (u.includes('HFC') || u.includes('COAX') || u.includes('CABO')) out.push('HFC');
+  if (u.includes('VDSL')) out.push('VDSL');
+  if (u.includes('ADSL')) out.push('ADSL');
+  if (u.includes('5G')) out.push('5G');
+  if (u.includes('4G') || u.includes('LTE')) out.push('4G/LTE');
+  if (u.includes('3G') || u.includes('UMTS')) out.push('3G');
+  if (u.includes('FWA')) out.push('FWA');
+  if (u.includes('SAT')) out.push('SAT');
+  if (out.length === 0 && tech.trim()) out.push(tech.trim().substring(0,20));
+  return out;
+}
+
+function parseANACOM(results) {
+  const opMap = {};
+  results.forEach(r => {
+    const a = r.attributes || {};
+    const rawOp = a.Operador || a.operador || a.OPERADOR || a.operator || '';
+    const op = normalizeOp(rawOp);
+    if (!op) return;
+    if (!opMap[op]) opMap[op] = {techs: new Set(), speeds: []};
+    const tech = a.Tecnologia || a.tecnologia || a.TECNOLOGIA || a.technology || '';
+    normalizeTech(tech).forEach(t => opMap[op].techs.add(t));
+    const dl = parseFloat(a.VelocidadeMaxDownload || a.velocidade_download || a.Velocidade || 0);
+    if (dl > 0) opMap[op].speeds.push(dl);
+  });
+
+  return OP_ORDER.map(name => ({
+    name,
+    available: !!opMap[name],
+    techs: opMap[name] ? Array.from(opMap[name].techs) : [],
+    dl: opMap[name] && opMap[name].speeds.length ? Math.max(...opMap[name].speeds) : null,
+    meta: OP_META[name],
+  }));
+}
+
+// ══════════════════════════════════════════════════════
+// SIMULATION FALLBACK (enquanto proxy não está ativo)
+// ══════════════════════════════════════════════════════
+function simulateCoverage(lat, lon) {
+  // Hash determinístico baseado em coordenadas
+  const h = Math.abs(Math.round(lat * 997 + lon * 1009)) % 100;
+  const major = h > 60;   // grande cidade
+  const urban = h > 30;   // zona urbana
+  const rural = h <= 30;  // zona rural
+
+  return [
+    {name:'MEO', available:true,
+      techs: major?['FTTH','VDSL','4G/LTE']:urban?['FTTH','4G/LTE']:['VDSL','4G/LTE'],
+      dl: major?2000:urban?1000:100, meta:OP_META['MEO']},
+    {name:'NOS', available:!rural||h>20,
+      techs: major?['FTTH','HFC','4G/LTE']:urban?['FTTH','4G/LTE']:['ADSL'],
+      dl: major?10000:urban?1000:30, meta:OP_META['NOS']},
+    {name:'VODAFONE', available:major||h>40,
+      techs: major?['FTTH','5G','4G/LTE']:urban?['FTTH','4G/LTE']:['FWA','4G/LTE'],
+      dl: major?1000:urban?1000:100, meta:OP_META['VODAFONE']},
+    {name:'DIGI', available:major||h>55,
+      techs: major?['FTTH','5G','4G/LTE']:['4G/LTE'],
+      dl: major?1000:300, meta:OP_META['DIGI']},
+    {name:'NOWO', available:major&&h>50,
+      techs:['HFC','4G/LTE'], dl:500, meta:OP_META['NOWO']},
+  ];
+}
+
+// ══════════════════════════════════════════════════════
+// RENDER RESULTS
+// ══════════════════════════════════════════════════════
+function renderResults(geo, ops, isReal) {
+  document.getElementById('res-addr').textContent = geo.label || '—';
+  const meta = [
+    geo.municipio && `${geo.municipio}`,
+    geo.distrito && `${geo.distrito}`,
+    `Lat ${geo.lat.toFixed(5)} · Lon ${geo.lon.toFixed(5)}`
+  ].filter(Boolean).join(' · ');
+  document.getElementById('res-meta').textContent = meta;
+
+  // Source
+  document.getElementById('src-wrap').innerHTML = isReal
+    ? `<div class="src-badge real"><div class="src-dot"></div>Dados reais · GEO.ANACOM API · Q4 2025</div>`
+    : `<div class="src-badge sim"><div class="src-dot"></div>Estimativa (proxy ANACOM não ativo — faz deploy em Vercel)</div>`;
+
+  // Map
+  const {lat, lon} = geo;
+  document.getElementById('map-frame').src =
+    `https://www.openstreetmap.org/export/embed.html?bbox=${lon-.012},${lat-.009},${lon+.012},${lat+.009}&layer=mapnik&marker=${lat},${lon}`;
+
+  // Summary pills
+  const nCov = ops.filter(o=>o.available).length;
+  const nNo  = ops.filter(o=>!o.available).length;
+  document.getElementById('cov-sum').innerHTML =
+    (nCov?`<div class="sum-pill ok"><div class="pdot"></div>${nCov} operadora${nCov>1?'s':''} disponíve${nCov>1?'is':'l'}</div>`:'') +
+    (nNo ?`<div class="sum-pill no"><div class="pdot"></div>${nNo} sem cobertura reportada</div>`:'');
+
+  // Operator cards
+  document.getElementById('ops-grid').innerHTML = ops.map(op => {
+    const m = op.meta || {};
+    const techHTML = op.techs.map(t => {
+      let c = '';
+      if (t==='FTTH') c='fiber';
+      else if (t==='HFC') c='cable';
+      else if (t.includes('DSL')) c='xdsl';
+      else if (t==='FWA') c='fwa';
+      else if (['4G/LTE','5G','3G'].includes(t)) c='mobile';
+      return `<span class="ttag ${c}">${t}</span>`;
+    }).join('');
+
+    const dlStr = op.dl
+      ? (op.dl>=1000 ? (op.dl/1000).toFixed(op.dl%1000===0?0:1)+'Gbps' : op.dl+'Mbps')
+      : null;
+
+    return `
+    <div class="op-card ${m.cls||'op-nos'}">
+      <div class="op-hdr">
+        <div class="op-name">${op.name}</div>
+        <div class="op-badge ${op.available?'b-ok':'b-no'}">${op.available?'Disponível ✓':'Sem cobertura'}</div>
+      </div>
+      ${op.available ? `
+        <div class="op-techs">${techHTML||'<span class="ttag">Rede disponível</span>'}</div>
+        ${dlStr?`<div class="op-dl">Download máx: <span>${dlStr}</span></div>`:''}
+        <a class="op-link" href="${m.url||'#'}" target="_blank">${m.label||'Ver operadora'} →</a>
+      ` : `<p class="op-nocov">Sem cobertura reportada nesta área</p>`}
+    </div>`;
+  }).join('');
+
+  document.getElementById('results').classList.add('active');
+  document.getElementById('results').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+// ══════════════════════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════════════════════
+function showLoading(v) {
+  document.getElementById('loading').classList.toggle('active', v);
+}
+function setStep(msg) {
+  document.getElementById('load-step').textContent = msg;
+}
+function showError(v, msg='') {
+  document.getElementById('err-box').classList.toggle('active', v);
+  if (msg) document.getElementById('err-msg').textContent = msg;
+}
+function resetSearch(soft=false) {
+  document.getElementById('results').classList.remove('active');
+  showError(false);
+  cachedGeo = null;
+  if (!soft) {
+    document.querySelectorAll('input').forEach(i=>i.value='');
+    document.getElementById('cp-detail').textContent='';
+  }
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// Close suggestions on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.sugg-wrap'))
+    document.getElementById('sugg-list')?.classList.remove('open');
+});
+</script>
+</body>
+</html>
