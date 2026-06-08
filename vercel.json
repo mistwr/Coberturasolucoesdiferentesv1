@@ -2,6 +2,9 @@
   "functions": {
     "api/cobertura.js": {
       "maxDuration": 45
+    },
+    "api/anacom.js": {
+      "maxDuration": 30
     }
   }
 }
