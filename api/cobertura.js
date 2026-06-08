@@ -127,7 +127,7 @@ Devolve JSON com cobertura real de cada operadora, usando os dados GEO.ANACOM co
 
   try {
     const { text } = await generateText({
-      model: 'anthropic/claude-sonnet-4-5',
+      model: 'google/gemini-3.5-flash',
       system: systemPrompt,
       messages: [{ role: 'user', content: userMsg }],
       maxOutputTokens: 900,
