@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/cobertura.js": {
+      "maxDuration": 45
+    }
+  }
+}
