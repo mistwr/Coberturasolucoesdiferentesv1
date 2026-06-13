@@ -131,7 +131,8 @@ function buildResponse(city, hasFiber, hasHFC, hasADSL, mobile, dataDate) {
     hasADSL  ? 'Cobre/ADSL' : null,
   ].filter(Boolean).join(', ') || 'Nenhuma tecnologia fixa detectada';
 
-  const text = `{"location":"${city || 'Local pesquisado'}","operators":${JSON.stringify(operators)}}`;
+  const payload = { location: city || 'Local pesquisado', operators };
+  const text = JSON.stringify(payload);
 
   return { text, operators, fixedSummary, availableOps, unavailableOps };
 }

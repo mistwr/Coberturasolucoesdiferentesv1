@@ -289,12 +289,13 @@ async function callProxy(query, geo) {
   return data.text || '';
 }
 
-// ── PARSE AI JSON ──
+// ── PARSE RESPONSE ──
 function parseAI(text) {
-  // Limpa markdown se existir
-  text = text.replace(/```json|```/g,'').trim();
+  if (typeof text === 'object' && text !== null) return text;
+  text = (text || '').replace(/```json|```/g, '').trim();
+  try { return JSON.parse(text); } catch {}
   const m = text.match(/\{[\s\S]*?"operators"[\s\S]*\}/);
-  if (!m) throw new Error('IA não devolveu JSON válido. Tenta novamente.');
+  if (!m) throw new Error('Resposta inválida do servidor. Tenta novamente.');
   return JSON.parse(m[0]);
 }
 
@@ -387,7 +388,7 @@ async function go() {
     const msg = e.message||'Erro desconhecido';
     const isProxy = msg.includes('api/cobertura') || msg.includes('HTML') || msg.includes('fetch');
     showErr(true,
-      isProxy ? 'Proxy não encontrado — verifica se api/cobertura.js está no GitHub e se a variável ANTHROPIC_API_KEY está no Vercel.' : msg,
+      isProxy ? 'Servidor não encontrado — verifica se api/cobertura.js está no GitHub e o deploy no Vercel.' : msg,
       isProxy ? msg.substring(0,200) : '');
     console.error(e);
   } finally {
