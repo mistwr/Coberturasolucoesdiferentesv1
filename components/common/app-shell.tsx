@@ -3,15 +3,25 @@ import { AppSidebar } from './app-sidebar'
 import { AppTopbar } from './app-topbar'
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  let user = null
+  let fullName = null
 
-  // Tentar buscar perfil (pode ainda não existir se schema não foi criado)
-  const { data: profile } = user
-    ? await supabase.from('profiles').select('full_name, role').eq('id', user.id).maybeSingle()
-    : { data: null }
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase.auth.getUser()
+    user = data.user
 
-  const fullName = profile?.full_name ?? user?.user_metadata?.full_name ?? null
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, role')
+        .eq('id', user.id)
+        .maybeSingle()
+      fullName = profile?.full_name ?? user.user_metadata?.full_name ?? null
+    }
+  } catch {
+    // Supabase ainda não configurado
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
