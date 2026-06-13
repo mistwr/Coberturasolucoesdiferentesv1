@@ -160,10 +160,10 @@ footer b{color:var(--accent);}
 
   <!-- STATUS EM TEMPO REAL -->
   <div class="statusbox" id="stbox">
-    <div class="sline wait" id="st1"><span class="si">○</span><span class="stxt">A localizar morada...</span></div>
-    <div class="sline wait" id="st2"><span class="si">○</span><span class="stxt">A consultar GEO.ANACOM + IA...</span></div>
-    <div class="sline wait" id="st3"><span class="si">○</span><span class="stxt">A processar dados de cobertura...</span></div>
-    <div class="sline wait" id="st4"><span class="si">○</span><span class="stxt">A preparar resultados...</span></div>
+    <div class="sline wait" id="st1"><span class="si">○</span><span class="stxt">A geocodificar morada (Nominatim)...</span></div>
+    <div class="sline wait" id="st2"><span class="si">○</span><span class="stxt">A consultar GEO.ANACOM (dados oficiais)...</span></div>
+    <div class="sline wait" id="st3"><span class="si">○</span><span class="stxt">A processar cobertura por operadora...</span></div>
+    <div class="sline wait" id="st4"><span class="si">○</span><span class="stxt">A apresentar resultados...</span></div>
   </div>
 
   <div class="err" id="err">
@@ -268,25 +268,25 @@ async function geocode(q) {
 let _lastAnacom = null;
 async function callProxy(query, geo) {
   const r = await fetch('/api/cobertura', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      query, lat:geo.lat, lon:geo.lon,
-      city:geo.city, municipio:geo.municipio, distrito:geo.distrito
+      query, lat: geo.lat, lon: geo.lon,
+      city: geo.city, municipio: geo.municipio, distrito: geo.distrito
     }),
-    signal: AbortSignal.timeout(50000)
+    signal: AbortSignal.timeout(30000)
   });
 
-  const ct = r.headers.get('content-type')||'';
+  const ct = r.headers.get('content-type') || '';
   if (!ct.includes('json')) {
     const txt = await r.text();
-    throw new Error(`Proxy devolveu HTML em vez de JSON (${r.status}). O ficheiro api/cobertura.js não está deployado correctamente.\n\n${txt.substring(0,200)}`);
+    throw new Error(`Servidor devolveu resposta inesperada (HTTP ${r.status}). Verifica se api/cobertura.js está deployado no Vercel.\n\n${txt.substring(0, 300)}`);
   }
 
   const data = await r.json();
-  if (!r.ok) throw new Error(data.error || `Proxy HTTP ${r.status}`);
+  if (!r.ok) throw new Error(data.error || `Erro no servidor: HTTP ${r.status}`);
   _lastAnacom = data.anacom || null;
-  return data.text || '';
+  return data.text || '{}';
 }
 
 // ── PARSE RESPONSE ──
