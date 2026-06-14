@@ -1,9 +1,8 @@
-// api/cobertura.js — CommonJS (sem "type":"module" necessário)
-// Integra GEO.ANACOM (dados oficiais) + Claude AI para enriquecimento
+// api/cobertura.js — CommonJS
+// Cobertura 100% via GEO.ANACOM open data — sem IA, sem chave de API
 
 const ANACOM_BASE = 'https://geo.anacom.pt/server/rest/services/publico/CoberturaQoS_Pub/MapServer';
 
-// Camadas rede fixa ANACOM
 const FIXED_LAYERS = [
   { id: 8,  tech: 'FTTH',   label: 'Fibra Ótica' },
   { id: 4,  tech: 'HFC_31', label: 'Cabo Coaxial (DOCSIS 3.1)' },
@@ -11,63 +10,102 @@ const FIXED_LAYERS = [
   { id: 6,  tech: 'ADSL',   label: 'Cobre (ADSL)' },
 ];
 
-// Camadas rede móvel ANACOM por operador
 const MOBILE_LAYERS = {
-  MEO:      { '4G': 176, '5G': 177, '3G': 175 },
-  NOS:      { '4G': 181, '5G': null },
+  MEO:      { '4G': 176, '5G': 177 },
+  NOS:      { '4G': 181 },
   VODAFONE: { '4G': 185, '5G': 186 },
   DIGI:     { '4G': 171, '5G': 172 },
 };
 
-async function queryAnacomLayer(layerId, lat, lon, signal) {
+async function queryLayer(layerId, lat, lon) {
   const geom = encodeURIComponent(JSON.stringify({ x: lon, y: lat }));
   const url = `${ANACOM_BASE}/${layerId}/query?geometry=${geom}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=tecnologia,data&returnGeometry=false&f=json&inSR=4326`;
   try {
-    const r = await fetch(url, { signal });
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 12000);
+    const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(timer);
     if (!r.ok) return null;
     const d = await r.json();
     if (d.error) return null;
-    return (d.features || []).length > 0 ? d.features[0].attributes : null;
-  } catch (e) {
+    const feats = d.features || [];
+    return feats.length > 0 ? (feats[0].attributes || {}) : null;
+  } catch {
     return null;
   }
 }
 
-async function getAnacomData(lat, lon) {
-  const signal = AbortSignal.timeout(18000);
+function buildOperators(hasFiber, hasHFC, hasADSL, mobile, dataDate, locationName) {
+  const src = dataDate ? `GEO.ANACOM ${dataDate}` : 'GEO.ANACOM';
+  const meo  = mobile.MEO      || {};
+  const nos  = mobile.NOS      || {};
+  const voda = mobile.VODAFONE || {};
+  const digi = mobile.DIGI     || {};
 
-  // Consultar rede fixa em paralelo
-  const fixedPromises = FIXED_LAYERS.map(l =>
-    queryAnacomLayer(l.id, lat, lon, signal).then(r => ({ ...l, hit: !!r, dataDate: r?.data || null }))
-  );
-
-  // Consultar rede móvel por operador em paralelo
-  const mobileEntries = [];
-  for (const [op, layers] of Object.entries(MOBILE_LAYERS)) {
-    for (const [gen, layerId] of Object.entries(layers)) {
-      if (layerId !== null) {
-        mobileEntries.push({ op, gen, promise: queryAnacomLayer(layerId, lat, lon, signal) });
-      }
-    }
-  }
-
-  const [fixedResults, ...mobileResults] = await Promise.all([
-    Promise.all(fixedPromises),
-    ...mobileEntries.map(e => e.promise),
-  ]);
-
-  const hasFiber = fixedResults.some(r => r.tech === 'FTTH' && r.hit);
-  const hasHFC   = fixedResults.some(r => (r.tech === 'HFC_31' || r.tech === 'HFC_30') && r.hit);
-  const hasADSL  = fixedResults.some(r => r.tech === 'ADSL' && r.hit);
-  const dataDate = fixedResults.find(r => r.hit)?.dataDate || null;
-
-  const mobile = {};
-  mobileEntries.forEach((e, i) => {
-    if (!mobile[e.op]) mobile[e.op] = {};
-    mobile[e.op][e.gen] = !!mobileResults[i];
-  });
-
-  return { hasFiber, hasHFC, hasADSL, mobile, dataDate };
+  return [
+    {
+      name: 'MEO',
+      available: hasFiber || hasADSL || !!meo['4G'],
+      technologies: [
+        ...(hasFiber ? ['FTTH'] : []),
+        ...(hasADSL && !hasFiber ? ['VDSL/ADSL'] : []),
+        ...(meo['4G'] ? ['4G/LTE'] : []),
+        ...(meo['5G'] ? ['5G'] : []),
+      ],
+      max_download_mbps: hasFiber ? 1000 : (meo['5G'] ? 500 : (meo['4G'] ? 150 : (hasADSL ? 100 : null))),
+      note: hasFiber ? `Fibra Ótica disponível — ${src}` : (hasADSL ? `Cobre/VDSL disponível — ${src}` : (meo['4G'] ? `Cobertura móvel 4G/5G — ${src}` : `Sem cobertura reportada — ${src}`)),
+      confidence: 'high',
+      source: src,
+    },
+    {
+      name: 'NOS',
+      available: hasHFC || hasFiber || !!nos['4G'],
+      technologies: [
+        ...(hasHFC ? ['HFC'] : []),
+        ...(hasFiber && !hasHFC ? ['FTTH'] : []),
+        ...(nos['4G'] ? ['4G/LTE'] : []),
+      ],
+      max_download_mbps: hasHFC || hasFiber ? 1000 : (nos['4G'] ? 150 : null),
+      note: hasHFC ? `Cabo Coaxial disponível — ${src}` : (hasFiber ? `Fibra disponível — ${src}` : (nos['4G'] ? `Cobertura móvel 4G — ${src}` : `Sem cobertura reportada — ${src}`)),
+      confidence: hasHFC || hasFiber ? 'high' : (nos['4G'] ? 'medium' : 'high'),
+      source: src,
+    },
+    {
+      name: 'VODAFONE',
+      available: hasFiber || !!voda['4G'],
+      technologies: [
+        ...(hasFiber ? ['FTTH'] : []),
+        ...(voda['4G'] ? ['4G/LTE'] : []),
+        ...(voda['5G'] ? ['5G'] : []),
+      ],
+      max_download_mbps: hasFiber ? 1000 : (voda['5G'] ? 500 : (voda['4G'] ? 150 : null)),
+      note: hasFiber ? `Fibra disponível — ${src}` : (voda['4G'] ? `Cobertura móvel — ${src}` : `Sem cobertura reportada — ${src}`),
+      confidence: hasFiber ? 'high' : (voda['4G'] ? 'medium' : 'high'),
+      source: src,
+    },
+    {
+      name: 'DIGI',
+      available: hasFiber || !!digi['4G'],
+      technologies: [
+        ...(hasFiber ? ['FTTH'] : []),
+        ...(digi['4G'] ? ['4G/LTE'] : []),
+        ...(digi['5G'] ? ['5G'] : []),
+      ],
+      max_download_mbps: hasFiber ? 1000 : (digi['5G'] ? 300 : (digi['4G'] ? 150 : null)),
+      note: hasFiber ? `Fibra em expansão — ${src}` : (digi['4G'] ? `Cobertura móvel — ${src}` : `Sem cobertura reportada — ${src}`),
+      confidence: hasFiber ? 'medium' : (digi['4G'] ? 'medium' : 'high'),
+      source: src,
+    },
+    {
+      name: 'NOWO',
+      available: hasHFC,
+      technologies: hasHFC ? ['HFC'] : [],
+      max_download_mbps: hasHFC ? 500 : null,
+      note: hasHFC ? `Cabo Coaxial disponível — ${src}` : `Sem cobertura (só Lisboa/Porto, área limitada)`,
+      confidence: 'medium',
+      source: src,
+    },
+  ];
 }
 
 module.exports = async function handler(req, res) {
@@ -75,106 +113,55 @@ module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Método não suportado' });
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({
-      error: 'ANTHROPIC_API_KEY não configurada. Vai ao Vercel → Settings → Environment Variables e adiciona a chave.'
-    });
+  const { lat, lon, city, municipio, distrito } = req.body || {};
+
+  if (!lat || !lon) {
+    return res.status(400).json({ error: 'Coordenadas (lat, lon) são obrigatórias' });
   }
 
-  const { query, lat, lon, city, municipio, distrito } = req.body || {};
-
-  // ── STEP 1: Consultar GEO.ANACOM ──
-  let anacom = null;
-  let anacomError = null;
   try {
-    anacom = await getAnacomData(lat, lon);
-  } catch (e) {
-    anacomError = e.message;
-    console.error('[ANACOM]', e.message);
-  }
+    // Consultar rede fixa em paralelo
+    const fixedResults = await Promise.all(
+      FIXED_LAYERS.map(async (l) => {
+        const hit = await queryLayer(l.id, lat, lon);
+        return { ...l, hit: !!hit, dataDate: hit?.data || null };
+      })
+    );
 
-  // ── STEP 2: Enriquecer com Claude AI (usa dados ANACOM como contexto) ──
-  const anacomContext = anacom
-    ? `DADOS REAIS GEO.ANACOM (fonte oficial ANACOM, referência ${anacom.dataDate || 'recente'}):
-- Rede Fixa: Fibra Ótica=${anacom.hasFiber ? 'SIM' : 'NÃO'}, Cabo Coaxial HFC=${anacom.hasHFC ? 'SIM' : 'NÃO'}, ADSL/Cobre=${anacom.hasADSL ? 'SIM' : 'NÃO'}
-- Rede Móvel MEO: 4G=${anacom.mobile.MEO?.['4G'] ? 'SIM' : 'NÃO'}, 5G=${anacom.mobile.MEO?.['5G'] ? 'SIM' : 'NÃO'}
-- Rede Móvel NOS: 4G=${anacom.mobile.NOS?.['4G'] ? 'SIM' : 'NÃO'}
-- Rede Móvel VODAFONE: 4G=${anacom.mobile.VODAFONE?.['4G'] ? 'SIM' : 'NÃO'}, 5G=${anacom.mobile.VODAFONE?.['5G'] ? 'SIM' : 'NÃO'}
-- Rede Móvel DIGI: 4G=${anacom.mobile.DIGI?.['4G'] ? 'SIM' : 'NÃO'}, 5G=${anacom.mobile.DIGI?.['5G'] ? 'SIM' : 'NÃO'}
+    const hasFiber = fixedResults.some(r => r.tech === 'FTTH' && r.hit);
+    const hasHFC   = fixedResults.some(r => (r.tech === 'HFC_31' || r.tech === 'HFC_30') && r.hit);
+    const hasADSL  = fixedResults.some(r => r.tech === 'ADSL' && r.hit);
+    const dataDate = fixedResults.find(r => r.hit)?.dataDate || null;
 
-NOTA IMPORTANTE: A rede fixa do ANACOM é agregada (todos operadores juntos). Fibra=MEO/NOS/Vodafone, HFC=NOS/NOWO, ADSL=MEO/NOS.
-Usa estes dados como base e aplica o teu conhecimento para atribuir por operadora.`
-    : `AVISO: GEO.ANACOM indisponível (${anacomError || 'timeout'}). Usa o teu conhecimento do mercado PT.`;
-
-  const systemPrompt = `És um especialista em telecomunicações portuguesas.
-Devolve APENAS JSON válido, sem markdown, sem texto extra, sem backticks.
-
-Formato obrigatório:
-{"location":"nome do local","operators":[{"name":"MEO","available":true,"technologies":["FTTH","4G/LTE"],"max_download_mbps":1000,"note":"Fibra disponível (GEO.ANACOM)","confidence":"high","source":"GEO.ANACOM"},{"name":"NOS","available":true,"technologies":["HFC","4G/LTE"],"max_download_mbps":1000,"note":"Cabo/Fibra disponível","confidence":"high","source":"GEO.ANACOM"},{"name":"VODAFONE","available":true,"technologies":["FTTH","4G/LTE"],"max_download_mbps":1000,"note":"Fibra disponível","confidence":"high","source":"GEO.ANACOM"},{"name":"DIGI","available":false,"technologies":[],"max_download_mbps":null,"note":"Sem cobertura fixa","confidence":"medium","source":"GEO.ANACOM"},{"name":"NOWO","available":false,"technologies":[],"max_download_mbps":null,"note":"Sem cobertura","confidence":"high","source":"GEO.ANACOM"}]}
-
-${anacomContext}
-
-CONHECIMENTO ADICIONAL Portugal:
-- MEO: sempre tem VDSL/ADSL onde há cobre. Se há fibra, MEO tem FTTH. 4G/LTE nacional.
-- NOS: HFC+FTTH em cidades. Se há HFC, é NOS (e/ou NOWO). 4G/LTE nacional.
-- VODAFONE: FTTH em zonas urbanas, 4G/LTE e 5G cidades.
-- DIGI: FTTH em expansão (Porto, Braga, Lisboa e arredores). 4G/LTE via rede própria.
-- NOWO: só HFC em partes de Lisboa e Porto. Muito limitado.
-- Se há HFC, NOS quase sempre tem cobertura. NOWO pode ter se for Lisboa/Porto.
-- Prioriza SEMPRE os dados reais do GEO.ANACOM quando disponíveis.`;
-
-  const userMsg = `Verifica cobertura para: "${query || ''}"
-Coordenadas: ${lat}, ${lon}
-Cidade/Localidade: ${city || municipio || ''}
-Município: ${municipio || ''}
-Distrito: ${distrito || ''}
-Devolve JSON com cobertura real de cada operadora, usando os dados GEO.ANACOM como base.`;
-
-  try {
-    const requestBody = JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 900,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userMsg }]
-    });
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: requestBody,
-      signal: AbortSignal.timeout(30000)
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      return res.status(502).json({
-        error: `Anthropic API erro ${response.status}`,
-        detail: errText.substring(0, 300)
-      });
+    // Consultar rede móvel em paralelo
+    const mobileJobs = [];
+    for (const [op, layers] of Object.entries(MOBILE_LAYERS)) {
+      for (const [gen, layerId] of Object.entries(layers)) {
+        mobileJobs.push({ op, gen, promise: queryLayer(layerId, lat, lon) });
+      }
     }
+    const mobileRaw = await Promise.all(mobileJobs.map(j => j.promise));
 
-    const data = await response.json();
-    const text = (data.content || [])
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
-      .join('');
+    const mobile = {};
+    mobileJobs.forEach((j, i) => {
+      if (!mobile[j.op]) mobile[j.op] = {};
+      mobile[j.op][j.gen] = !!mobileRaw[i];
+    });
+
+    const locationName = city || municipio || distrito || 'Local pesquisado';
+    const operators = buildOperators(hasFiber, hasHFC, hasADSL, mobile, dataDate, locationName);
+
+    const payload = { location: locationName, operators };
 
     return res.status(200).json({
-      text,
-      anacom: anacom
-        ? { hasFiber: anacom.hasFiber, hasHFC: anacom.hasHFC, hasADSL: anacom.hasADSL, dataDate: anacom.dataDate, mobile: anacom.mobile }
-        : null,
+      text: JSON.stringify(payload),
+      anacom: { hasFiber, hasHFC, hasADSL, dataDate, mobile },
     });
 
   } catch (err) {
-    console.error('Proxy erro:', err);
-    return res.status(500).json({ error: err.message });
+    console.error('[cobertura]', err.message);
+    return res.status(500).json({ error: 'Erro ao consultar GEO.ANACOM: ' + err.message });
   }
 };

@@ -160,10 +160,10 @@ footer b{color:var(--accent);}
 
   <!-- STATUS EM TEMPO REAL -->
   <div class="statusbox" id="stbox">
-    <div class="sline wait" id="st1"><span class="si">○</span><span class="stxt">A localizar morada...</span></div>
-    <div class="sline wait" id="st2"><span class="si">○</span><span class="stxt">A consultar GEO.ANACOM + IA...</span></div>
-    <div class="sline wait" id="st3"><span class="si">○</span><span class="stxt">A processar dados de cobertura...</span></div>
-    <div class="sline wait" id="st4"><span class="si">○</span><span class="stxt">A preparar resultados...</span></div>
+    <div class="sline wait" id="st1"><span class="si">○</span><span class="stxt">A geocodificar morada (Nominatim)...</span></div>
+    <div class="sline wait" id="st2"><span class="si">○</span><span class="stxt">A consultar GEO.ANACOM (dados oficiais)...</span></div>
+    <div class="sline wait" id="st3"><span class="si">○</span><span class="stxt">A processar cobertura por operadora...</span></div>
+    <div class="sline wait" id="st4"><span class="si">○</span><span class="stxt">A apresentar resultados...</span></div>
   </div>
 
   <div class="err" id="err">
@@ -268,33 +268,34 @@ async function geocode(q) {
 let _lastAnacom = null;
 async function callProxy(query, geo) {
   const r = await fetch('/api/cobertura', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      query, lat:geo.lat, lon:geo.lon,
-      city:geo.city, municipio:geo.municipio, distrito:geo.distrito
+      query, lat: geo.lat, lon: geo.lon,
+      city: geo.city, municipio: geo.municipio, distrito: geo.distrito
     }),
-    signal: AbortSignal.timeout(50000)
+    signal: AbortSignal.timeout(30000)
   });
 
-  const ct = r.headers.get('content-type')||'';
+  const ct = r.headers.get('content-type') || '';
   if (!ct.includes('json')) {
     const txt = await r.text();
-    throw new Error(`Proxy devolveu HTML em vez de JSON (${r.status}). O ficheiro api/cobertura.js não está deployado correctamente.\n\n${txt.substring(0,200)}`);
+    throw new Error(`Servidor devolveu resposta inesperada (HTTP ${r.status}). Verifica se api/cobertura.js está deployado no Vercel.\n\n${txt.substring(0, 300)}`);
   }
 
   const data = await r.json();
-  if (!r.ok) throw new Error(data.error || `Proxy HTTP ${r.status}`);
+  if (!r.ok) throw new Error(data.error || `Erro no servidor: HTTP ${r.status}`);
   _lastAnacom = data.anacom || null;
-  return data.text || '';
+  return data.text || '{}';
 }
 
-// ── PARSE AI JSON ──
+// ── PARSE RESPONSE ──
 function parseAI(text) {
-  // Limpa markdown se existir
-  text = text.replace(/```json|```/g,'').trim();
+  if (typeof text === 'object' && text !== null) return text;
+  text = (text || '').replace(/```json|```/g, '').trim();
+  try { return JSON.parse(text); } catch {}
   const m = text.match(/\{[\s\S]*?"operators"[\s\S]*\}/);
-  if (!m) throw new Error('IA não devolveu JSON válido. Tenta novamente.');
+  if (!m) throw new Error('Resposta inválida do servidor. Tenta novamente.');
   return JSON.parse(m[0]);
 }
 
@@ -310,8 +311,9 @@ function tc(t) {
 }
 function fmtDL(m){ if(!m)return null; return m>=1000?(m/1000).toFixed(m%1000===0?0:1)+'Gbps':m+'Mbps'; }
 
-function render(geo, d) {
-  $('raddr').textContent = d.location || geo.label || '—';
+function render(geo, d, originalQuery) {
+  const addrLabel = geo.label || originalQuery || d.location || '—';
+  $('raddr').textContent = addrLabel;
 
   // Mostrar badge ANACOM se dados reais disponíveis
   const anacomBadge = _lastAnacom
@@ -374,7 +376,7 @@ async function go() {
     stSet(3,'done');
 
     stSet(4,'run');
-    render(geo, data);
+    render(geo, data, q);
     stSet(4,'done');
 
     await new Promise(r=>setTimeout(r,400));
@@ -387,7 +389,7 @@ async function go() {
     const msg = e.message||'Erro desconhecido';
     const isProxy = msg.includes('api/cobertura') || msg.includes('HTML') || msg.includes('fetch');
     showErr(true,
-      isProxy ? 'Proxy não encontrado — verifica se api/cobertura.js está no GitHub e se a variável ANTHROPIC_API_KEY está no Vercel.' : msg,
+      isProxy ? 'Servidor não encontrado — verifica se api/cobertura.js está no GitHub e o deploy no Vercel.' : msg,
       isProxy ? msg.substring(0,200) : '');
     console.error(e);
   } finally {
