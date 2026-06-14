@@ -229,18 +229,22 @@ async function geocode(q) {
         {headers:{'Accept':'application/json'}, signal:AbortSignal.timeout(7000)});
       if (r.ok) {
         const d = await r.json();
-        if (d?.lat && parseFloat(d.lat) !== 0) {
+        // json.geoapi.pt retorna "centro" [lat, lon] ou "centroDeMassa"
+        const coords = d?.centro || d?.centroDeMassa;
+        if (coords && coords.length === 2 && parseFloat(coords[0]) !== 0) {
           return {
-            lat:parseFloat(d.lat), lon:parseFloat(d.lon),
-            label:[d.Arteria||d.Designacao||'',d.Localidade||''].filter(Boolean).join(', ')+` (${cpStr})`||cpStr,
-            city:d.Localidade||d.Municipio||'',
-            municipio:d.Municipio||'', distrito:d.Distrito||'', cp:cpStr
+            lat: parseFloat(coords[0]),
+            lon: parseFloat(coords[1]),
+            label: [d.Arteria||d.Designacao||'', d.Localidade||''].filter(Boolean).join(', ') + ` (${cpStr})` || cpStr,
+            city: d.Localidade || d.Concelho || d.Municipio || '',
+            municipio: d.Municipio || d.Concelho || '',
+            distrito: d.Distrito || ''
           };
         }
       }
     } catch(e){}
   }
-  // Nominatim fallback — melhora query para código postal
+  // Nominatim fallback
   const isCP = /^\d{4}-?\d{3}$/.test(q.trim());
   const queries = isCP 
     ? [`postalcode:${q.replace('-','')} Portugal`, q+' Portugal', q]
