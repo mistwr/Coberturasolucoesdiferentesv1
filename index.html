@@ -315,8 +315,11 @@ function tc(t) {
 }
 function fmtDL(m){ if(!m)return null; return m>=1000?(m/1000).toFixed(m%1000===0?0:1)+'Gbps':m+'Mbps'; }
 
-function render(geo, d) {
-  $('raddr').textContent = d.location || geo.label || '—';
+function render(geo, d, originalQuery) {
+  // Mostrar a morada geocodificada real (Nominatim) — corresponde exactamente ao mapa
+  // geo.label = endereço normalizado pelo Nominatim; fallback para o que o utilizador escreveu
+  const addrLabel = geo.label || originalQuery || d.location || '—';
+  $('raddr').textContent = addrLabel;
 
   // Mostrar badge ANACOM se dados reais disponíveis
   const anacomBadge = _lastAnacom
@@ -379,7 +382,7 @@ async function go() {
     stSet(3,'done');
 
     stSet(4,'run');
-    render(geo, data);
+    render(geo, data, q);
     stSet(4,'done');
 
     await new Promise(r=>setTimeout(r,400));
