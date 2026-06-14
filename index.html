@@ -232,7 +232,7 @@ async function geocode(q) {
         if (d?.lat && parseFloat(d.lat) !== 0) {
           return {
             lat:parseFloat(d.lat), lon:parseFloat(d.lon),
-            label:[d.Arteria||'',d.Localidade||d.Designacao||''].filter(Boolean).join(', ')||cpStr,
+            label:[d.Arteria||d.Designacao||'',d.Localidade||''].filter(Boolean).join(', ')+` (${cpStr})`||cpStr,
             city:d.Localidade||d.Municipio||'',
             municipio:d.Municipio||'', distrito:d.Distrito||'', cp:cpStr
           };
@@ -240,8 +240,12 @@ async function geocode(q) {
       }
     } catch(e){}
   }
-  // Nominatim fallback
-  for (const qq of [q+' Portugal', q]) {
+  // Nominatim fallback — melhora query para código postal
+  const isCP = /^\d{4}-?\d{3}$/.test(q.trim());
+  const queries = isCP 
+    ? [`postalcode:${q.replace('-','')} Portugal`, q+' Portugal', q]
+    : [q+' Portugal', q];
+  for (const qq of queries) {
     try {
       const r = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(qq)}&format=json&limit=1&countrycodes=pt&addressdetails=1`,
